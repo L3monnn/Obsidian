@@ -1751,6 +1751,96 @@ function Library:AddDraggableMenu(Name: string)
     return Holder, Container
 end
 
+function Library:AddDraggableImageButton(Image: string, Func, Size: UDim2?, ExcludeScaling: boolean?, ExcludeDragging: boolean?)
+    local Table = {}
+
+    local Icon = Library:GetCustomIcon(Image)
+    assert(Icon, "Image must be a valid Roblox asset or a valid URL or a valid lucide icon.")
+
+    local Button: ImageButton = New("ImageButton", {
+        BackgroundColor3 = "BackgroundColor",
+        Image = Icon.Url,
+        ImageRectOffset = Icon.ImageRectOffset,
+        ImageRectSize = Icon.ImageRectSize,
+        Position = UDim2.fromOffset(6, 6),
+        ScaleType = Enum.ScaleType.Fit,
+        Size = Size or UDim2.fromOffset(32, 32),
+        ZIndex = 10,
+        Parent = ScreenGui,
+    })
+    table.insert(
+        Library.Corners,
+        New("UICorner", {
+            CornerRadius = UDim.new(0, Library.CornerRadius),
+            Parent = Button,
+        })
+    )
+    if not ExcludeScaling then
+        table.insert(
+            Library.Scales,
+            New("UIScale", {
+                Parent = Button,
+            })
+        )
+    end
+    Library:AddOutline(Button)
+
+    local DragThreshold = if ExcludeDragging then 0.25 else math.huge
+    Button.InputBegan:Connect(function(Input: InputObject)
+        if not IsClickInput(Input) then
+            return
+        end
+
+        local Start = tick()
+
+        local Changed
+        Changed = Input.Changed:Connect(function()
+            if Input.UserInputState ~= Enum.UserInputState.End then
+                return
+            end
+
+            local IsLikelyDragging = tick() - Start > DragThreshold
+            if IsLikelyDragging then
+                return
+            end
+
+            Library:SafeCallback(Func, Table)
+
+            if Changed and Changed.Connected then
+                Changed:Disconnect()
+                Changed = nil
+            end
+        end)
+    end)
+
+    Library:MakeDraggable(Button, Button, true)
+
+    Table.Button = Button
+
+    function Table:SetImage(NewImage: string)
+        assert(typeof(NewImage) == "string", "Image must be a string.")
+
+        local NewIcon = Library:GetCustomIcon(NewImage)
+        assert(NewIcon, "Image must be a valid Roblox asset or a valid URL or a valid lucide icon.")
+
+        Button.Image = NewIcon.Url
+        Button.ImageRectOffset = NewIcon.ImageRectOffset
+        Button.ImageRectSize = NewIcon.ImageRectSize
+    end
+
+    function Table:SetSize(NewSize: UDim2)
+        assert(typeof(NewSize) == "UDim2", "Size must be a UDim2 value.")
+
+        Button.Size = NewSize
+    end
+
+    function Table:SetVisible(Visible: boolean)
+        Button.Visible = Visible
+    end
+
+    return Table
+end
+
 --// Watermark - Deprecated \\--
 do
     local WatermarkLabel = Library:AddDraggableLabel("")
