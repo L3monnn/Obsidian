@@ -1616,8 +1616,11 @@ function Library:AddDraggableLabel(Text: string)
     return Table
 end
 
-function Library:AddDraggableButton(Text: string, Func, ExcludeScaling: boolean?, ExcludeDragging: boolean?)
+function Library:AddDraggableButton(Text: string, Func, ExcludeScaling: boolean?, ExcludeDragging: boolean?, Image: string?)
     local Table = {}
+    local IconSize = 16
+    local IconPadding = 6
+    local IconLabel
 
     local Button: TextButton = New("TextButton", {
         BackgroundColor3 = "BackgroundColor",
@@ -1675,13 +1678,55 @@ function Library:AddDraggableButton(Text: string, Func, ExcludeScaling: boolean?
 
     Table.Button = Button
 
-    function Table:SetText(Text: string)
-        local X, Y = Library:GetTextBounds(Text, Library.Scheme.Font, 16)
+    local function UpdateButtonLayout()
+        local X, Y = Library:GetTextBounds(Button.Text, Library.Scheme.Font, 16)
 
-        Button.Text = Text
-        Button.Size = UDim2.fromOffset(X * 2, Y * 2)
+        if IconLabel and IconLabel.Visible then
+            Button.Size = UDim2.fromOffset((X * 2) + IconSize + IconPadding, Y * 2)
+            IconLabel.Position = UDim2.new(0.5, -(X / 2) - IconPadding - IconSize, 0.5, 0)
+        else
+            Button.Size = UDim2.fromOffset(X * 2, Y * 2)
+        end
+    end
+
+    function Table:SetImage(NewImage: string?)
+        if not NewImage or NewImage == "" then
+            if IconLabel then
+                IconLabel.Visible = false
+            end
+            UpdateButtonLayout()
+            return
+        end
+
+        local Icon = Library:GetCustomIcon(NewImage)
+        assert(Icon, "Image must be a valid Roblox asset or a valid URL or a valid lucide icon.")
+
+        if not IconLabel then
+            IconLabel = New("ImageLabel", {
+                AnchorPoint = Vector2.new(0, 0.5),
+                Size = UDim2.fromOffset(IconSize, IconSize),
+                ScaleType = Enum.ScaleType.Fit,
+                Parent = Button,
+            })
+            Table.ImageLabel = IconLabel
+        end
+
+        IconLabel.Image = Icon.Url
+        FillInstance({
+            ImageColor3 = Icon.Custom and "WhiteColor" or "FontColor",
+        }, IconLabel)
+        IconLabel.ImageRectOffset = Icon.ImageRectOffset
+        IconLabel.ImageRectSize = Icon.ImageRectSize
+        IconLabel.Visible = true
+        UpdateButtonLayout()
+    end
+
+    function Table:SetText(NewText: string)
+        Button.Text = NewText
+        UpdateButtonLayout()
     end
     Table:SetText(Text)
+    Table:SetImage(Image)
 
     return Table
 end
